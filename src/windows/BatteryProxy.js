@@ -36,6 +36,46 @@ function handleResponse(successCb, errorCb, jsonResponse) {
 
 var Battery = {
     start: function (win, fail, args, env) {
+
+        // If we find that we're on Windows 10 vs. 8.0/8.1, we will handle all of the battery reporting right here.
+        if (typeof WinJS.Utilities.isPhone == "undefined") {
+
+            // Store last reported info here
+            var battery = {
+                isPlugged: false,
+                level: 100
+            };
+
+            // Called when battery status changes
+            function onReportUpdated(eventArgs) {
+                var STATUS_CRITICAL = 5;
+                var STATUS_LOW = 20;
+                var info = {};
+                var aggregateBattery = Windows.Devices.Power.Battery.aggregateBattery;
+                var batteryReport = aggregateBattery.getReport();
+                var fullChargeCapacityInMilliwattHours = batteryReport.fullChargeCapacityInMilliwattHours;
+                var remainingCapacityInMilliwattHours = batteryReport.remainingCapacityInMilliwattHours;
+                info.level = (remainingCapacityInMilliwattHours * 100) / fullChargeCapacityInMilliwattHours;
+                info.isPlugged = ((batteryReport.status == Windows.System.Power.BatteryStatus.idle) || (batteryReport.status == Windows.System.Power.BatteryStatus.charging));
+                cordova.fireWindowEvent("batterystatus", info);
+                if (battery.level !== info.level || battery.isPlugged !== info.isPlugged) {
+                    if (battery._level > STATUS_CRITICAL && info.level <= STATUS_CRITICAL) {
+                        cordova.fireWindowEvent("batterycritical", info);
+                    }
+                    else if (battery._level > STATUS_LOW && info.level <= STATUS_LOW) {
+                        cordova.fireWindowEvent("batterylow", info);
+                    }
+                }
+                battery.level = info.level;
+                battery.isPlugged = info.isPlugged;
+            }
+
+            // Call onReportUpdated to get the initial status and then listen for changes
+            var aggregateBattery = Windows.Devices.Power.Battery.aggregateBattery;
+            onReportUpdated(Windows.Devices.Power.Battery.aggregateBattery);
+            aggregateBattery.addEventListener("reportupdated", onReportUpdated);
+        }
+
         function getBatteryStatus(success, error) {
             handleResponse(success, error, BatteryStatus.BatteryStatus.start());
         }
