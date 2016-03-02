@@ -74,6 +74,7 @@ var Battery = {
             var aggregateBattery = Windows.Devices.Power.Battery.aggregateBattery;
             onReportUpdated(Windows.Devices.Power.Battery.aggregateBattery);
             aggregateBattery.addEventListener("reportupdated", onReportUpdated);
+            return;
         }
 
         function getBatteryStatus(success, error) {
